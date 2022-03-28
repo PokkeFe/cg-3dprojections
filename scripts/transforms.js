@@ -54,11 +54,19 @@ function mat4x4Identity(mat4x4) {
 // set values of existing 4x4 matrix to the translate matrix
 function Mat4x4Translate(mat4x4, tx, ty, tz) {
     // mat4x4.values = ...;
+    mat4x4.values = [[1, 0, 0, tx],
+                     [0, 1, 0, ty],
+                     [0, 0, 1, tz],
+                     [0, 0, 0, 1]];
 }
 
 // set values of existing 4x4 matrix to the scale matrix
 function Mat4x4Scale(mat4x4, sx, sy, sz) {
     // mat4x4.values = ...;
+    mat4x4.values = [[sx, 0, 0, 0],
+                     [0, sy, 0, 0],
+                     [0, 0, sz, 0],
+                     [0, 0, 0, 1]];
 }
 
 // set values of existing 4x4 matrix to the rotate about x-axis matrix
