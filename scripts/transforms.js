@@ -72,21 +72,43 @@ function Mat4x4Scale(mat4x4, sx, sy, sz) {
 // set values of existing 4x4 matrix to the rotate about x-axis matrix
 function Mat4x4RotateX(mat4x4, theta) {
     // mat4x4.values = ...;
+    let c = Math.cos(theta);
+    let s = Math.sin(theta);
+    mat4x4.values = [[1, 0, 0, 0],
+                     [0, c,-s, 0],
+                     [0, s, c, 0],
+                     [0, 0, 0, 1]];
 }
 
 // set values of existing 4x4 matrix to the rotate about y-axis matrix
 function Mat4x4RotateY(mat4x4, theta) {
     // mat4x4.values = ...;
+    let c = Math.cos(theta);
+    let s = Math.sin(theta);
+    mat4x4.values = [[c, 0, s, 0],
+                     [0, 1, 0, 0],
+                     [-s, 0, c, 0],
+                     [0, 0, 0, 1]];
 }
 
 // set values of existing 4x4 matrix to the rotate about z-axis matrix
 function Mat4x4RotateZ(mat4x4, theta) {
     // mat4x4.values = ...;
+    let c = Math.cos(theta);
+    let s = Math.sin(theta);
+    mat4x4.values = [[c,-s, 0, 0],
+                     [s, c, 0, 0],
+                     [0, 0, 1, 0],
+                     [0, 0, 0, 1]];
 }
 
 // set values of existing 4x4 matrix to the shear parallel to the xy-plane matrix
 function Mat4x4ShearXY(mat4x4, shx, shy) {
     // mat4x4.values = ...;
+    mat4x4.values = [[1, 0, shx, 0],
+                     [0, 1, shy, 0],
+                     [0, 0, 1, 0],
+                     [0, 0, 0, 1]];
 }
 
 // create a new 3-component vector with values x,y,z
