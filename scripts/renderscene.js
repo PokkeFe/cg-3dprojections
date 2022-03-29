@@ -93,6 +93,31 @@ function drawScene() {
     //  * clip in 3D
     //  * project to 2D
     //  * draw line
+
+    console.log("Drawing scene")
+    // TODO: Allow for parallel perspective
+    let n = mat4x4Perspective(scene.view.prp, scene.view.srp, scene.view.vup, scene.view.clip)
+    let m = mat4x4MPer()
+
+    for(let model of scene.models) {
+        if(model.type === 'generic') {
+            for(let edge of model.edges) {
+                for(let i = 0; i < edge.length - 1; i++) {
+                    let v1 = model.vertices[edge[i]];
+                    let v2 = model.vertices[edge[i+1]];
+                    
+                    let v1a = Matrix.multiply([m, n, v1]);
+                    let v2a = Matrix.multiply([m, n, v2]);
+                    v1a.x = v1a.x / v1a.w;
+                    v1a.y = v1a.y / v1a.w;
+                    v2a.x = v2a.x / v2a.w;
+                    v2a.y = v2a.y / v2a.w;
+                    console.log(v1a, v2a)
+                    drawLine(v1a.x, v1a.y, v2a.x, v2a.y);
+                }
+            }
+        }
+    }
 }
 
 // Get outcode for vertex (parallel view volume)
