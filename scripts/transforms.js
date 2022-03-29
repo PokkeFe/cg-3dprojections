@@ -13,14 +13,66 @@ function mat4x4Parallel(prp, srp, vup, clip) {
 
 // create a 4x4 matrix to the perspective projection / view matrix
 function mat4x4Perspective(prp, srp, vup, clip) {
-    // 1. translate PRP to origin
-    // 2. rotate VRC such that (u,v,n) align with (x,y,z)
-    // 3. shear such that CW is on the z-axis
-    // 4. scale such that view volume bounds are ([z,-z], [z,-z], [-1,zmin])
 
+    let n = new Vector(3)
+    n.values = [0,0,0]
+    n = n.add(prp)
+    n = n.subtract(srp)
+    n.normalize()
+
+    let u = new Vector(3)
+    u.values = [0,0,0]
+    u = u.add(vup)
+    u = u.cross(n)
+    u.normalize()
+
+    let v = new Vector(3)
+    v.values = [0,0,0]
+    v = v.add(n)
+    v = v.cross(u)
+
+    let cw = new Vector(3)
+    cw.x = (clip[0] + clip[1]) / 2
+    cw.y = (clip[2] + clip[3]) / 2
+    cw.z = -clip[4]
+    console.log("cw", cw)
+
+    let dop = new Vector(3)
+    dop.values = [0, 0, 0]
+    dop = dop.add(cw)
+    dop = dop.subtract(prp)
+
+    // 1. translate PRP to origin
+    let t = new Matrix(4,4);
+    Mat4x4Translate(t, prp.x, prp.y, prp.z);
+
+    // 2. rotate VRC such that (u,v,n) align with (x,y,z)
+    let r = new Matrix(4, 4);
+    r.values = [[u.x, u.y, u.z, 0],
+                [v.x, v.y, v.z, 0],
+                [n.x, n.y, n.z, 0],
+                [0, 0, 0, 1]];
+
+    // 3. shear such that CW is on the z-axis
+    let shx = (-dop.x)/dop.z;
+    let shy = (-dop.y)/dop.z;
+    let sh = new Matrix(4, 4);
+    Mat4x4ShearXY(sh, shx, shy)
+
+    // 4. scale such that view volume bounds are ([z,-z], [z,-z], [-1,zmin])
+    let sx = (2 * clip[4]) / ((clip[1] - clip[0]) * clip[5])
+    let sy = (2 * clip[4]) / ((clip[3] - clip[2]) * clip[5])
+    let sz = 1 / clip[5]
+    let s = new Matrix(4, 4);
+    Mat4x4Scale(s, sx, sy, sz)
+    
     // ...
     // let transform = Matrix.multiply([...]);
+    let transform = Matrix.multiply([s, sh, r , t]);
+
+    console.log(transform)
     // return transform;
+    return transform
 }
 
 // create a 4x4 matrix to project a parallel image on the z=0 plane
@@ -34,6 +86,10 @@ function mat4x4MPar() {
 function mat4x4MPer() {
     let mper = new Matrix(4, 4);
     // mper.values = ...;
+    mper.values = [[1, 0, 0, 0],
+                   [0, 1, 0, 0],
+                   [0, 0, 1, 0],
+                   [0, 0, -1, 0]];
     return mper;
 }
 
