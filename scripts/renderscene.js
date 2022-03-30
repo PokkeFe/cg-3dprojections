@@ -59,6 +59,46 @@ function init() {
         ]
     };
 
+    // debug scene
+    debug_scene = {
+        view: {
+            type: 'perspective',
+            prp: Vector3(0, 10, -5),
+            srp: Vector3(20, 15, -40),
+            vup: Vector3(1, 1, 0),
+            clip: [-12, 6, -12, 6, 10, 100]
+        },
+        models: [
+            {
+                type: 'generic',
+                vertices: [
+                    Vector4( 0,  0, -30, 1),
+                    Vector4(20,  0, -30, 1),
+                    Vector4(20, 12, -30, 1),
+                    Vector4(10, 20, -30, 1),
+                    Vector4( 0, 12, -30, 1),
+                    Vector4( 0,  0, -60, 1),
+                    Vector4(20,  0, -60, 1),
+                    Vector4(20, 12, -60, 1),
+                    Vector4(10, 20, -60, 1),
+                    Vector4( 0, 12, -60, 1)
+                ],
+                edges: [
+                    [0, 1, 2, 3, 4, 0],
+                    [5, 6, 7, 8, 9, 5],
+                    [0, 5],
+                    [1, 6],
+                    [2, 7],
+                    [3, 8],
+                    [4, 9]
+                ],
+                matrix: new Matrix(4, 4)
+            }
+        ]
+    };
+
+    scene = debug_scene
+
     // event handler for pressing arrow keys
     document.addEventListener('keydown', onKeyDown, false);
     
@@ -98,6 +138,8 @@ function drawScene() {
     // TODO: Allow for parallel perspective
     let n = mat4x4Perspective(scene.view.prp, scene.view.srp, scene.view.vup, scene.view.clip)
     let m = mat4x4MPer()
+    let mn = m.mult(n)
+    console.log("mn", mn)
 
     for(let model of scene.models) {
         if(model.type === 'generic') {
@@ -106,13 +148,14 @@ function drawScene() {
                     let v1 = model.vertices[edge[i]];
                     let v2 = model.vertices[edge[i+1]];
                     
-                    let v1a = Matrix.multiply([m, n, v1]);
-                    let v2a = Matrix.multiply([m, n, v2]);
+                    let v1a = Matrix.multiply([mn, v1])
+                    console.log(v1.x, v1.y, v1.z, "|", v1a.values[0][0], v1a.values[1][0], v1a.values[2][0])
+                    let v2a = Matrix.multiply([mn, v2])
+                    console.log(v2.values, v2a.values)
                     v1a.x = v1a.x / v1a.w;
                     v1a.y = v1a.y / v1a.w;
                     v2a.x = v2a.x / v2a.w;
                     v2a.y = v2a.y / v2a.w;
-                    console.log(v1a, v2a)
                     drawLine(v1a.x, v1a.y, v2a.x, v2a.y);
                 }
             }
