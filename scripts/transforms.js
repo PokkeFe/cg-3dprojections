@@ -49,7 +49,7 @@ function mat4x4Perspective(prp, srp, vup, clip) {
 
     // 1. translate PRP to origin
     let t = new Matrix(4,4);
-    Mat4x4Translate(t, prp.x, prp.y, prp.z);
+    Mat4x4Translate(t, -prp.x, -prp.y, -prp.z);
 
     // 2. rotate VRC such that (u,v,n) align with (x,y,z)
     let r = new Matrix(4, 4);

@@ -3,12 +3,12 @@ let ctx;
 let scene;
 let start_time;
 
-const LEFT =   32; // binary 100000
-const RIGHT =  16; // binary 010000
+const LEFT = 32; // binary 100000
+const RIGHT = 16; // binary 010000
 const BOTTOM = 8;  // binary 001000
-const TOP =    4;  // binary 000100
-const FAR =    2;  // binary 000010
-const NEAR =   1;  // binary 000001
+const TOP = 4;  // binary 000100
+const FAR = 2;  // binary 000010
+const NEAR = 1;  // binary 000001
 const FLOAT_EPSILON = 0.000001;
 
 // Initialization function - called when web page loads
@@ -18,6 +18,11 @@ function init() {
     view = document.getElementById('view');
     view.width = w;
     view.height = h;
+    view.transformMatrix = new Matrix(4,4)
+    view.transformMatrix.values = [[w/2,   0,  0, w/2],
+                                   [  0, h/2,  0, h/2],
+                                   [  0,   0,  1,   0],
+                                   [  0,   0,  0,   1]]
 
     ctx = view.getContext('2d');
 
@@ -34,16 +39,16 @@ function init() {
             {
                 type: 'generic',
                 vertices: [
-                    Vector4( 0,  0, -30, 1),
-                    Vector4(20,  0, -30, 1),
+                    Vector4(0, 0, -30, 1),
+                    Vector4(20, 0, -30, 1),
                     Vector4(20, 12, -30, 1),
                     Vector4(10, 20, -30, 1),
-                    Vector4( 0, 12, -30, 1),
-                    Vector4( 0,  0, -60, 1),
-                    Vector4(20,  0, -60, 1),
+                    Vector4(0, 12, -30, 1),
+                    Vector4(0, 0, -60, 1),
+                    Vector4(20, 0, -60, 1),
                     Vector4(20, 12, -60, 1),
                     Vector4(10, 20, -60, 1),
-                    Vector4( 0, 12, -60, 1)
+                    Vector4(0, 12, -60, 1)
                 ],
                 edges: [
                     [0, 1, 2, 3, 4, 0],
@@ -59,49 +64,10 @@ function init() {
         ]
     };
 
-    // debug scene
-    debug_scene = {
-        view: {
-            type: 'perspective',
-            prp: Vector3(0, 10, -5),
-            srp: Vector3(20, 15, -40),
-            vup: Vector3(1, 1, 0),
-            clip: [-12, 6, -12, 6, 10, 100]
-        },
-        models: [
-            {
-                type: 'generic',
-                vertices: [
-                    Vector4( 0,  0, -30, 1),
-                    Vector4(20,  0, -30, 1),
-                    Vector4(20, 12, -30, 1),
-                    Vector4(10, 20, -30, 1),
-                    Vector4( 0, 12, -30, 1),
-                    Vector4( 0,  0, -60, 1),
-                    Vector4(20,  0, -60, 1),
-                    Vector4(20, 12, -60, 1),
-                    Vector4(10, 20, -60, 1),
-                    Vector4( 0, 12, -60, 1)
-                ],
-                edges: [
-                    [0, 1, 2, 3, 4, 0],
-                    [5, 6, 7, 8, 9, 5],
-                    [0, 5],
-                    [1, 6],
-                    [2, 7],
-                    [3, 8],
-                    [4, 9]
-                ],
-                matrix: new Matrix(4, 4)
-            }
-        ]
-    };
-
-    scene = debug_scene
 
     // event handler for pressing arrow keys
     document.addEventListener('keydown', onKeyDown, false);
-    
+
     // start animation loop
     start_time = performance.now(); // current timestamp in milliseconds
     window.requestAnimationFrame(animate);
@@ -111,7 +77,7 @@ function init() {
 function animate(timestamp) {
     // step 1: calculate time (time since start)
     let time = timestamp - start_time;
-    
+
     // step 2: transform models based on time
     // TODO: implement this!
 
@@ -126,7 +92,7 @@ function animate(timestamp) {
 // Main drawing code - use information contained in variable `scene`
 function drawScene() {
     console.log(scene);
-    
+
     // TODO: implement drawing here!
     // For each model, for each edge
     //  * transform to canonical view volume
@@ -139,24 +105,30 @@ function drawScene() {
     let n = mat4x4Perspective(scene.view.prp, scene.view.srp, scene.view.vup, scene.view.clip)
     let m = mat4x4MPer()
     let mn = m.mult(n)
-    console.log("mn", mn)
 
-    for(let model of scene.models) {
-        if(model.type === 'generic') {
-            for(let edge of model.edges) {
-                for(let i = 0; i < edge.length - 1; i++) {
+    for (let model of scene.models) {
+        if (model.type === 'generic') {
+            for (let edge of model.edges) {
+                for (let i = 0; i < edge.length - 1; i++) {
                     let v1 = model.vertices[edge[i]];
-                    let v2 = model.vertices[edge[i+1]];
-                    
+                    let v2 = model.vertices[edge[i + 1]];
+
+                    // mn * v1 and mn * v2
                     let v1a = Matrix.multiply([mn, v1])
-                    console.log(v1.x, v1.y, v1.z, "|", v1a.values[0][0], v1a.values[1][0], v1a.values[2][0])
                     let v2a = Matrix.multiply([mn, v2])
-                    console.log(v2.values, v2a.values)
-                    v1a.x = v1a.x / v1a.w;
-                    v1a.y = v1a.y / v1a.w;
-                    v2a.x = v2a.x / v2a.w;
-                    v2a.y = v2a.y / v2a.w;
-                    drawLine(v1a.x, v1a.y, v2a.x, v2a.y);
+
+                    // transform to screen coordinates
+                    v1a = Matrix.multiply([view.transformMatrix, v1a])
+                    v2a = Matrix.multiply([view.transformMatrix, v2a])
+
+                    // x and y / w
+                    v1a.values[0][0] = v1a.values[0][0] / v1a.values[3][0];
+                    v1a.values[1][0] = v1a.values[1][0] / v1a.values[3][0];
+                    v2a.values[0][0] = v2a.values[0][0] / v2a.values[3][0];
+                    v2a.values[1][0] = v2a.values[1][0] / v2a.values[3][0];
+
+                    // Draw line
+                    drawLine(v1a.values[0][0], v1a.values[1][0], v2a.values[0][0], v2a.values[1][0]);
                 }
             }
         }
@@ -214,26 +186,26 @@ function outcodePerspective(vertex, z_min) {
 // Clip line - should either return a new line (with two endpoints inside view volume) or null (if line is completely outside view volume)
 function clipLineParallel(line) {
     let result = null;
-    let p0 = Vector3(line.pt0.x, line.pt0.y, line.pt0.z); 
+    let p0 = Vector3(line.pt0.x, line.pt0.y, line.pt0.z);
     let p1 = Vector3(line.pt1.x, line.pt1.y, line.pt1.z);
     let out0 = outcodeParallel(p0);
     let out1 = outcodeParallel(p1);
-    
+
     // TODO: implement clipping here!
-    
+
     return result;
 }
 
 // Clip line - should either return a new line (with two endpoints inside view volume) or null (if line is completely outside view volume)
 function clipLinePerspective(line, z_min) {
     let result = null;
-    let p0 = Vector3(line.pt0.x, line.pt0.y, line.pt0.z); 
+    let p0 = Vector3(line.pt0.x, line.pt0.y, line.pt0.z);
     let p1 = Vector3(line.pt1.x, line.pt1.y, line.pt1.z);
     let out0 = outcodePerspective(p0, z_min);
     let out1 = outcodePerspective(p1, z_min);
-    
+
     // TODO: implement clipping here!
-    
+
     return result;
 }
 
@@ -282,16 +254,16 @@ function loadNewScene() {
             if (scene.models[i].type === 'generic') {
                 for (let j = 0; j < scene.models[i].vertices.length; j++) {
                     scene.models[i].vertices[j] = Vector4(scene.models[i].vertices[j][0],
-                                                          scene.models[i].vertices[j][1],
-                                                          scene.models[i].vertices[j][2],
-                                                          1);
+                        scene.models[i].vertices[j][1],
+                        scene.models[i].vertices[j][2],
+                        1);
                 }
             }
             else {
                 scene.models[i].center = Vector4(scene.models[i].center[0],
-                                                 scene.models[i].center[1],
-                                                 scene.models[i].center[2],
-                                                 1);
+                    scene.models[i].center[1],
+                    scene.models[i].center[2],
+                    1);
             }
             scene.models[i].matrix = new Matrix(4, 4);
         }
