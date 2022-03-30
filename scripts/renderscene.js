@@ -86,12 +86,33 @@ function animate(timestamp) {
 
     // step 4: request next animation frame (recursively calling same function)
     // (may want to leave commented out while debugging initially)
-    // window.requestAnimationFrame(animate);
+    window.requestAnimationFrame(animate);
 }
 
 // Main drawing code - use information contained in variable `scene`
 function drawScene() {
-    console.log(scene);
+    //console.log(scene);
+
+    ctx.fillStyle = 'white'
+    ctx.fillRect(0, 0, view.width, view.height)
+
+
+    scene.n = new Vector(3)
+    scene.n.values = [0,0,0]
+    scene.n = scene.n.add(scene.view.prp)
+    scene.n = scene.n.subtract(scene.view.srp)
+    scene.n.normalize()
+
+    scene.u = new Vector(3)
+    scene.u.values = [0,0,0]
+    scene.u = scene.u.add(scene.view.vup)
+    scene.u = scene.u.cross(scene.n)
+    scene.u.normalize()
+
+    scene.v = new Vector(3)
+    scene.v.values = [0,0,0]
+    scene.v = scene.v.add(scene.n)
+    scene.v = scene.v.cross(scene.u)
 
     // TODO: implement drawing here!
     // For each model, for each edge
@@ -213,21 +234,31 @@ function onKeyDown(event) {
     switch (event.keyCode) {
         case 37: // LEFT Arrow
             console.log("left");
+            scene.view.srp = scene.view.srp.subtract(scene.u)
             break;
         case 39: // RIGHT Arrow
             console.log("right");
+            scene.view.srp = scene.view.srp.add(scene.u)
             break;
         case 65: // A key
             console.log("A");
+            scene.view.prp = scene.view.prp.subtract(scene.u)
+            scene.view.srp = scene.view.srp.subtract(scene.u)
             break;
         case 68: // D key
             console.log("D");
+            scene.view.prp = scene.view.prp.add(scene.u)
+            scene.view.srp = scene.view.srp.add(scene.u)
             break;
         case 83: // S key
             console.log("S");
+            scene.view.prp = scene.view.prp.add(scene.n)
+            scene.view.srp = scene.view.srp.add(scene.n)
             break;
         case 87: // W key
             console.log("W");
+            scene.view.prp = scene.view.prp.subtract(scene.n)
+            scene.view.srp = scene.view.srp.subtract(scene.n)
             break;
     }
 }
