@@ -100,7 +100,6 @@ function drawScene() {
     //  * project to 2D
     //  * draw line
 
-    console.log("Drawing scene")
     // TODO: Allow for parallel perspective
     let n = mat4x4Perspective(scene.view.prp, scene.view.srp, scene.view.vup, scene.view.clip)
     let m = mat4x4MPer()

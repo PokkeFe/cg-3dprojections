@@ -31,16 +31,10 @@ function mat4x4Perspective(prp, srp, vup, clip) {
     v = v.add(n)
     v = v.cross(u)
 
-    console.log("u,v,n")
-    console.log(u.values)
-    console.log(v.values)
-    console.log(n.values)
-
     let cw = new Vector(3)
     cw.x = (clip[0] + clip[1]) / 2
     cw.y = (clip[2] + clip[3]) / 2
     cw.z = -clip[4]
-    console.log("cw", cw)
 
     let dop = new Vector(3)
     dop.values = [0, 0, 0]
@@ -71,17 +65,9 @@ function mat4x4Perspective(prp, srp, vup, clip) {
     let s = new Matrix(4, 4);
     Mat4x4Scale(s, sx, sy, sz)
     
-    // ...
     // let transform = Matrix.multiply([...]);
     let transform = Matrix.multiply([s, sh, r , t]);
 
-    console.log("t,r,sh,s")
-    console.log(t.values)
-    console.log(r.values)
-    console.log(sh.values)
-    console.log(s.values)
-
-    console.log(transform)
     // return transform;
     return transform
 }
