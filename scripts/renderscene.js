@@ -181,11 +181,12 @@ function perspectiveClipping(v1, v2) {
     let v2outcode = outcodePerspective(v2, scene.view.clip[4])
 
     // Trivial accept
-    if (v1outcode | v2outcode == 0) {
+    if ((v1outcode | v2outcode) == 0) {
         return [v1, v2]
     }
     // Trivial reject
-    else if (v1outcode & v2outcode != 0) {
+    else if ((v1outcode & v2outcode) != 0) {
+        console.log("Trivial reject")
         return false
     }
     // Investigate further
