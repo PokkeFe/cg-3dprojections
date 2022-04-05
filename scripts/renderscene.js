@@ -186,7 +186,6 @@ function perspectiveClipping(v1, v2) {
     }
     // Trivial reject
     else if ((v1outcode & v2outcode) != 0) {
-        console.log("Trivial reject")
         return false
     }
     // Investigate further
@@ -316,14 +315,51 @@ function clipLinePerspective(line, z_min) {
 
 // Called when user presses a key on the keyboard down 
 function onKeyDown(event) {
+    let t, it, r, srpM, srpMa
     switch (event.keyCode) {
         case 37: // LEFT Arrow
             console.log("left");
-            scene.view.srp = scene.view.srp.subtract(scene.u)
+
+            t = new Matrix(4, 4);
+            it = new Matrix(4, 4);
+            Mat4x4Translate(t, -scene.view.prp.x, -scene.view.prp.y, -scene.view.prp.z)
+            Mat4x4Translate(it, scene.view.prp.x, scene.view.prp.y, scene.view.prp.z)
+            r = new Matrix(4, 4);
+            Mat4x4RotateY(r, Math.PI/100);
+
+            srpM = new Matrix(4, 1);
+            srpM.values = [
+                [scene.view.srp.x],
+                [scene.view.srp.y],
+                [scene.view.srp.z],
+                [1]
+            ]
+            
+            srpMa = Matrix.multiply([it, r, t, srpM])
+            scene.view.srp = new Vector3(srpMa.values[0][0], srpMa.values[1][0], srpMa.values[2][0])
+
             break;
         case 39: // RIGHT Arrow
             console.log("right");
-            scene.view.srp = scene.view.srp.add(scene.u)
+            
+            t = new Matrix(4, 4);
+            it = new Matrix(4, 4);
+            Mat4x4Translate(t, -scene.view.prp.x, -scene.view.prp.y, -scene.view.prp.z)
+            Mat4x4Translate(it, scene.view.prp.x, scene.view.prp.y, scene.view.prp.z)
+            r = new Matrix(4, 4);
+            Mat4x4RotateY(r, -Math.PI/100);
+
+            srpM = new Matrix(4, 1);
+            srpM.values = [
+                [scene.view.srp.x],
+                [scene.view.srp.y],
+                [scene.view.srp.z],
+                [1]
+            ]
+            
+            srpMa = Matrix.multiply([it, r, t, srpM])
+            scene.view.srp = new Vector3(srpMa.values[0][0], srpMa.values[1][0], srpMa.values[2][0])
+
             break;
         case 65: // A key
             console.log("A");
