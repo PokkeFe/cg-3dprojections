@@ -18,11 +18,11 @@ function init() {
     view = document.getElementById('view');
     view.width = w;
     view.height = h;
-    view.transformMatrix = new Matrix(4,4)
-    view.transformMatrix.values = [[w/2,   0,  0, w/2],
-                                   [  0, h/2,  0, h/2],
-                                   [  0,   0,  1,   0],
-                                   [  0,   0,  0,   1]]
+    view.transformMatrix = new Matrix(4, 4)
+    view.transformMatrix.values = [[w / 2, 0, 0, w / 2],
+    [0, h / 2, 0, h / 2],
+    [0, 0, 1, 0],
+    [0, 0, 0, 1]]
 
     ctx = view.getContext('2d');
 
@@ -98,19 +98,19 @@ function drawScene() {
 
 
     scene.n = new Vector(3)
-    scene.n.values = [0,0,0]
+    scene.n.values = [0, 0, 0]
     scene.n = scene.n.add(scene.view.prp)
     scene.n = scene.n.subtract(scene.view.srp)
     scene.n.normalize()
 
     scene.u = new Vector(3)
-    scene.u.values = [0,0,0]
+    scene.u.values = [0, 0, 0]
     scene.u = scene.u.add(scene.view.vup)
     scene.u = scene.u.cross(scene.n)
     scene.u.normalize()
 
     scene.v = new Vector(3)
-    scene.v.values = [0,0,0]
+    scene.v.values = [0, 0, 0]
     scene.v = scene.v.add(scene.n)
     scene.v = scene.v.cross(scene.u)
 
@@ -128,30 +128,114 @@ function drawScene() {
 
     for (let model of scene.models) {
         if (model.type === 'generic') {
+            // transform the edge list into a canonical view volume copy
+            let edges = []
             for (let edge of model.edges) {
                 for (let i = 0; i < edge.length - 1; i++) {
-                    let v1 = model.vertices[edge[i]];
-                    let v2 = model.vertices[edge[i + 1]];
-
-                    // mn * v1 and mn * v2
-                    let v1a = Matrix.multiply([mn, v1])
-                    let v2a = Matrix.multiply([mn, v2])
-
-                    // transform to screen coordinates
-                    v1a = Matrix.multiply([view.transformMatrix, v1a])
-                    v2a = Matrix.multiply([view.transformMatrix, v2a])
-
-                    // x and y / w
-                    v1a.values[0][0] = v1a.values[0][0] / v1a.values[3][0];
-                    v1a.values[1][0] = v1a.values[1][0] / v1a.values[3][0];
-                    v2a.values[0][0] = v2a.values[0][0] / v2a.values[3][0];
-                    v2a.values[1][0] = v2a.values[1][0] / v2a.values[3][0];
-
-                    // Draw line
-                    drawLine(v1a.values[0][0], v1a.values[1][0], v2a.values[0][0], v2a.values[1][0]);
+                    // Transform to canonical view volume
+                    let v1 = model.vertices[edge[i]]
+                    let v2 = model.vertices[edge[i + 1]]
+                    v1 = Matrix.multiply([n, v1])
+                    v2 = Matrix.multiply([n, v2])
+                    // Clip
+                    let clippedVertices = perspectiveClipping(v1, v2);
+                    if (clippedVertices != false) {
+                        edges.push([clippedVertices[0], clippedVertices[1]])
+                    }
                 }
             }
+
+            for (let edge of edges) {
+                let v1 = edge[0];
+                let v2 = edge[1];
+
+                // Project to 2d
+                v1 = Matrix.multiply([m, v1])
+                v2 = Matrix.multiply([m, v2])
+
+                // transform to screen coordinates
+                v1 = Matrix.multiply([view.transformMatrix, v1])
+                v2 = Matrix.multiply([view.transformMatrix, v2])
+
+                // x and y / w
+                v1.values[0][0] = v1.values[0][0] / v1.values[3][0];
+                v1.values[1][0] = v1.values[1][0] / v1.values[3][0];
+                v2.values[0][0] = v2.values[0][0] / v2.values[3][0];
+                v2.values[1][0] = v2.values[1][0] / v2.values[3][0];
+
+                // Draw line
+                drawLine(
+                    v1.x,
+                    v1.y,
+                    v2.x,
+                    v2.y
+                );
+            }
         }
+    }
+}
+
+function perspectiveClipping(v1, v2) {
+    // Clip in 3d
+    let v1outcode = outcodePerspective(v1, scene.view.clip[4])
+    let v2outcode = outcodePerspective(v2, scene.view.clip[4])
+
+    // Trivial accept
+    if (v1outcode | v2outcode == 0) {
+        return [v1, v2]
+    }
+    // Trivial reject
+    else if (v1outcode & v2outcode != 0) {
+        return false
+    }
+    // Investigate further
+    else {
+
+        if (v1outcode != 0) {
+            let new_v1 = perspectiveIntersection(v1, v2, v1outcode)
+            return perspectiveClipping(new_v1, v2)
+
+        } else if (v2outcode != 0) {
+            let new_v2 = perspectiveIntersection(v1, v2, v2outcode)
+            return perspectiveClipping(v1, new_v2)
+        }
+        throw new Error("Both vertices inbounds but not trivally accepted")
+    }
+}
+
+function perspectiveIntersection(v1, v2, outcode) {
+    let t = undefined
+    let dx = v2.x - v1.x
+    let dy = v2.y - v1.y
+    let dz = v2.z - v1.z
+    // Clip first vertex
+    if ((outcode & LEFT) != 0) {
+        t = (v1.z - v1.x) / (dx - dz)
+    }
+    else if ((outcode & RIGHT) != 0) {
+        t = (v1.x + v1.z) / ((dx + dz) * -1)
+    }
+    else if ((outcode & BOTTOM) != 0) {
+        t = (v1.z - v1.y) / (dy - dz)
+    }
+    else if ((outcode & TOP) != 0) {
+        t = (v1.y + v1.z) / ((-dy) - dz)
+    }
+    else if ((outcode & NEAR) != 0) {
+        t = (v1.z - scene.view.clip[4]) / (-dz)
+    }
+    else if ((outcode & FAR) != 0) {
+        t = ((-v1.z) - 1) / dz
+    }
+    if (t == undefined) {
+        throw new Error("t undefined")
+    } else {
+        return new Vector4(
+            (1 - t) * v1.x + t * v2.x,
+            (1 - t) * v1.y + t * v2.y,
+            (1 - t) * v1.z + t * v2.z,
+            v1.w
+        )
     }
 }
 
