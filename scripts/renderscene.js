@@ -2,6 +2,7 @@ let view;
 let ctx;
 let scene;
 let start_time;
+let keysDown = {}
 
 const LEFT = 32; // binary 100000
 const RIGHT = 16; // binary 010000
@@ -67,6 +68,13 @@ function init() {
                 width: 20,
                 height: 20,
                 depth: 20
+            },
+            {
+                type: 'cone',
+                center: Vector3(0, 0, 0),
+                radius: 10,
+                height: 10,
+                sides: 10
             }
         ]
     };
@@ -76,7 +84,13 @@ function init() {
     console.log(scene.models)
 
     // event handler for pressing arrow keys
-    document.addEventListener('keydown', onKeyDown, false);
+    // document.addEventListener('keydown', onKeyDown, false);
+    document.addEventListener('keydown', (event) => {
+        keysDown[event.keyCode] = true;
+    }, false);
+    document.addEventListener('keyup', (event) => {
+        delete keysDown[event.keyCode];
+    }, false);
 
     // start animation loop
     start_time = performance.now(); // current timestamp in milliseconds
@@ -87,6 +101,11 @@ function init() {
 function animate(timestamp) {
     // step 1: calculate time (time since start)
     let time = timestamp - start_time;
+
+    // step 1.5: handle input
+    for(let key of Object.keys(keysDown)) {
+        onKeyDown({keyCode: parseInt(key)})
+    }
 
     // step 2: transform models based on time
     // TODO: implement this!
@@ -452,6 +471,9 @@ function generateModels() {
             case 'cube':
                 scene.models[i] = generateCube(model.center, model.width, model.height, model.depth);
                 break;
+            case 'cone':
+                scene.models[i] = generateCone(model.center, model.radius, model.height, model.sides);
+                break;
         }
     }
 }
@@ -483,11 +505,8 @@ function generateCube(center, width, height, depth)
     // translate vertices around centerpoint
     let t = new Matrix(4,4)
     Mat4x4Translate(t, center.x, center.y, center.z)
-    console.log(t, model.vertices)
     for(let i = 0; i < model.vertices.length; i++) {
-        console.log(model.vertices[i])
         model.vertices[i] = new Vector(Matrix.multiply([t, model.vertices[i]]))
-        console.log("after")
     }
 
     model.edges.push(...[
@@ -498,6 +517,46 @@ function generateCube(center, width, height, depth)
         [2,6],
         [3,7]
     ])
+
+    return model
+}
+
+function generateCone(center, radius, height, sides)
+{
+    let model = {
+        type: 'generic',
+        vertices: [],
+        edges: [],
+        matrix: new Matrix(4,4)
+    }
+
+    // vertices
+    const PI2 = Math.PI * 2
+    for(let i = 0; i < sides; i += 1) {
+        let p = PI2 * (i / sides)
+        model.vertices.push(new Vector4(Math.sin(p) * radius,
+                                        -(height/2),
+                                        Math.cos(p) * radius,
+                                        1))
+    }
+    model.vertices.push(new Vector4(0, (height/2), 0, 1))
+
+    // translate vertices around centerpoint
+    let t = new Matrix(4,4)
+    Mat4x4Translate(t, center.x, center.y, center.z)
+    console.log(t, model.vertices)
+    for(let i = 0; i < model.vertices.length; i++) {
+        console.log(model.vertices[i])
+        model.vertices[i] = new Vector(Matrix.multiply([t, model.vertices[i]]))
+    }
+
+    // edges
+
+    model.edges.push([...Array(sides).keys(), 0])
+
+    for(let i = 0; i < model.vertices.length - 1; i++) {
+        model.edges.push([i, model.vertices.length - 1])
+    }
 
     return model
 }
