@@ -3,6 +3,7 @@ let ctx;
 let scene;
 let start_time;
 let keysDown = {}
+let last_time = 0;
 
 const LEFT = 32; // binary 100000
 const RIGHT = 16; // binary 010000
@@ -64,38 +65,49 @@ function init() {
             },
             {
                 type: 'cube',
-                center: Vector3(-20, 10, -20),
+                center: Vector3(-20, 10, -18),
                 width: 20,
                 height: 20,
                 depth: 20
             },
             {
                 type: 'cone',
-                center: Vector3(0, 0, 0),
+                center: Vector3(-20, 30, -18),
                 radius: 10,
-                height: 10,
-                sides: 10
+                height: 20,
+                sides: 10,
+                animation: {
+                    axis: 'y',
+                    rps: 0.01
+                }
             },
             {
                 type: 'cylinder',
-                center: Vector3(30, 0, 20),
+                center: Vector3(-30, 40, -40),
                 radius: 10,
                 height: 30,
-                sides: 10
+                sides: 10,
+                animation: {
+                    axis: 'z',
+                    rps: 0.01
+                }
             },
             {
                 type: 'sphere',
-                center: Vector3(0, 0, -25),
-                radius: 10,
+                center: Vector3(-20, 45, -18),
+                radius: 5,
                 slices: 12,
-                stacks: 12
+                stacks: 12,
+                animation: {
+                    axis: 'y',
+                    rps: 0.2
+                }
             }
         ]
     };
 
     // generate models
     generateModels()
-    console.log(scene.models)
 
     // event handler for pressing arrow keys
     // document.addEventListener('keydown', onKeyDown, false);
@@ -115,6 +127,8 @@ function init() {
 function animate(timestamp) {
     // step 1: calculate time (time since start)
     let time = timestamp - start_time;
+    let delta_time = time - last_time;
+    last_time = time;
 
     // step 1.5: handle input
     for (let key of Object.keys(keysDown)) {
@@ -122,7 +136,7 @@ function animate(timestamp) {
     }
 
     // step 2: transform models based on time
-    // TODO: implement this!
+    animateModels(delta_time)
 
     // step 3: draw scene
     drawScene();
@@ -134,7 +148,6 @@ function animate(timestamp) {
 
 // Main drawing code - use information contained in variable `scene`
 function drawScene() {
-    //console.log(scene);
 
     ctx.fillStyle = 'white'
     ctx.fillRect(0, 0, view.width, view.height)
@@ -480,6 +493,7 @@ function drawLine(x1, y1, x2, y2) {
 function generateModels() {
     for (let i = 0; i < scene.models.length; i++) {
         let model = scene.models[i];
+        let animation = model.animation;
         switch (model.type) {
             case 'cube':
                 scene.models[i] = generateCube(model.center, model.width, model.height, model.depth);
@@ -492,6 +506,14 @@ function generateModels() {
                 break;
             case 'sphere':
                 scene.models[i] = generateSphere(model.center, model.radius, model.slices, model.stacks)
+                break;
+            case 'generic':
+                // Generate centerpoint for animations
+                generateCenterpoint(scene.models[i])
+        }
+        // preserve animation details
+        if (animation) {
+            scene.models[i].animation = animation
         }
     }
 }
@@ -501,7 +523,8 @@ function generateCube(center, width, height, depth) {
         type: 'generic',
         vertices: [],
         edges: [],
-        matrix: new Matrix(4, 4)
+        matrix: new Matrix(4, 4),
+        center: center
     }
 
     let w = width / 2
@@ -543,7 +566,8 @@ function generateCone(center, radius, height, sides) {
         type: 'generic',
         vertices: [],
         edges: [],
-        matrix: new Matrix(4, 4)
+        matrix: new Matrix(4, 4),
+        center: center
     }
 
     // vertices
@@ -560,9 +584,7 @@ function generateCone(center, radius, height, sides) {
     // translate vertices around centerpoint
     let t = new Matrix(4, 4)
     Mat4x4Translate(t, center.x, center.y, center.z)
-    console.log(t, model.vertices)
     for (let i = 0; i < model.vertices.length; i++) {
-        console.log(model.vertices[i])
         model.vertices[i] = new Vector(Matrix.multiply([t, model.vertices[i]]))
     }
 
@@ -582,7 +604,8 @@ function generateCylinder(center, radius, height, sides) {
         type: 'generic',
         vertices: [],
         edges: [],
-        matrix: new Matrix(4, 4)
+        matrix: new Matrix(4, 4),
+        center: center
     }
 
     // vertices
@@ -605,9 +628,7 @@ function generateCylinder(center, radius, height, sides) {
     // translate vertices around centerpoint
     let t = new Matrix(4, 4)
     Mat4x4Translate(t, center.x, center.y, center.z)
-    console.log(t, model.vertices)
     for (let i = 0; i < model.vertices.length; i++) {
-        console.log(model.vertices[i])
         model.vertices[i] = new Vector(Matrix.multiply([t, model.vertices[i]]))
     }
 
@@ -632,7 +653,8 @@ function generateSphere(center, radius, slices, stacks) {
         type: 'generic',
         vertices: [],
         edges: [],
-        matrix: new Matrix(4, 4)
+        matrix: new Matrix(4, 4),
+        center: center
     }
 
     // vertices
@@ -696,4 +718,52 @@ function generateSphere(center, radius, slices, stacks) {
     }
 
     return model
+}
+
+function generateCenterpoint(model) {
+    // Average all points
+    let center = new Vector3(0, 0, 0)
+    let count = 0;
+    for(let vertex of model.vertices) {
+        center.x = center.x + vertex.x
+        center.y = center.y + vertex.y
+        center.z = center.z + vertex.z
+        count++;
+    }
+    center.x = center.x / count;
+    center.y = center.y / count;
+    center.z = center.z / count;
+
+    model.center = center;
+}
+
+function animateModels(delta_time) {
+    for(let i = 0; i < scene.models.length; i++) {
+        let model = scene.models[i]
+        if(model.animation && model.center) {
+            // 2 translation and 1 rotation matrix
+            let t1 = new Matrix(4, 4);
+            let t2 = new Matrix(4, 4);
+            Mat4x4Translate(t1, -model.center.x, -model.center.y, -model.center.z);
+            Mat4x4Translate(t2, model.center.x, model.center.y, model.center.z);
+            let r = new Matrix(4,4);
+            let theta = (Math.PI * 2 * model.animation.rps) / (1000 / delta_time)
+            switch(model.animation.axis) {
+                case 'x':
+                    Mat4x4RotateX(r, theta)
+                    break;
+                case 'y':
+                    Mat4x4RotateY(r, theta)
+                    break;
+                case 'z':
+                    Mat4x4RotateZ(r, theta)
+                    break;
+                default:
+                    throw new Error("No proper axis provided")
+            }
+            for(let j = 0; j < model.vertices.length; j++) {
+                scene.models[i].vertices[j] = Matrix.multiply([t2, r, t1, model.vertices[j]])
+            }
+        }
+    }
 }
