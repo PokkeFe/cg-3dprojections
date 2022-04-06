@@ -60,10 +60,20 @@ function init() {
                     [4, 9]
                 ],
                 matrix: new Matrix(4, 4)
+            },
+            {
+                type: 'cube',
+                center: Vector3(-20, 10, -20),
+                width: 20,
+                height: 20,
+                depth: 20
             }
         ]
     };
 
+    // generate models
+    generateModels()
+    console.log(scene.models)
 
     // event handler for pressing arrow keys
     document.addEventListener('keydown', onKeyDown, false);
@@ -124,7 +134,6 @@ function drawScene() {
     // TODO: Allow for parallel perspective
     let n = mat4x4Perspective(scene.view.prp, scene.view.srp, scene.view.vup, scene.view.clip)
     let m = mat4x4MPer()
-    let mn = m.mult(n)
 
     for (let model of scene.models) {
         if (model.type === 'generic') {
@@ -433,4 +442,62 @@ function drawLine(x1, y1, x2, y2) {
     ctx.fillStyle = '#FF0000';
     ctx.fillRect(x1 - 2, y1 - 2, 4, 4);
     ctx.fillRect(x2 - 2, y2 - 2, 4, 4);
+}
+
+function generateModels() {
+    for(let i = 0; i < scene.models.length; i++)
+    {
+        let model = scene.models[i];
+        switch(model.type) {
+            case 'cube':
+                scene.models[i] = generateCube(model.center, model.width, model.height, model.depth);
+                break;
+        }
+    }
+}
+
+function generateCube(center, width, height, depth)
+{
+    let model = {
+        type: 'generic',
+        vertices: [],
+        edges: [],
+        matrix: new Matrix(4,4)
+    }
+
+    let w = width / 2
+    let h = height / 2
+    let d = depth / 2
+
+    model.vertices.push(...[
+        Vector4(-w, h, -d, 1),
+        Vector4(w, h, -d, 1),
+        Vector4(w, -h, -d, 1),
+        Vector4(-w, -h, -d, 1),
+        Vector4(-w, h, d, 1),
+        Vector4(w, h, d, 1),
+        Vector4(w, -h, d, 1),
+        Vector4(-w, -h, d, 1),
+    ])
+
+    // translate vertices around centerpoint
+    let t = new Matrix(4,4)
+    Mat4x4Translate(t, center.x, center.y, center.z)
+    console.log(t, model.vertices)
+    for(let i = 0; i < model.vertices.length; i++) {
+        console.log(model.vertices[i])
+        model.vertices[i] = new Vector(Matrix.multiply([t, model.vertices[i]]))
+        console.log("after")
+    }
+
+    model.edges.push(...[
+        [0,1,2,3,0],
+        [4,5,6,7,4],
+        [0,4],
+        [1,5],
+        [2,6],
+        [3,7]
+    ])
+
+    return model
 }
