@@ -75,6 +75,13 @@ function init() {
                 radius: 10,
                 height: 10,
                 sides: 10
+            },
+            {
+                type: 'cylinder',
+                center: Vector3(30, 0, 20),
+                radius: 10,
+                height: 30,
+                sides: 10
             }
         ]
     };
@@ -103,8 +110,8 @@ function animate(timestamp) {
     let time = timestamp - start_time;
 
     // step 1.5: handle input
-    for(let key of Object.keys(keysDown)) {
-        onKeyDown({keyCode: parseInt(key)})
+    for (let key of Object.keys(keysDown)) {
+        onKeyDown({ keyCode: parseInt(key) })
     }
 
     // step 2: transform models based on time
@@ -353,7 +360,7 @@ function onKeyDown(event) {
             Mat4x4Translate(t, -scene.view.prp.x, -scene.view.prp.y, -scene.view.prp.z)
             Mat4x4Translate(it, scene.view.prp.x, scene.view.prp.y, scene.view.prp.z)
             r = new Matrix(4, 4);
-            Mat4x4RotateY(r, Math.PI/100);
+            Mat4x4RotateY(r, Math.PI / 100);
 
             srpM = new Matrix(4, 1);
             srpM.values = [
@@ -362,20 +369,20 @@ function onKeyDown(event) {
                 [scene.view.srp.z],
                 [1]
             ]
-            
+
             srpMa = Matrix.multiply([it, r, t, srpM])
             scene.view.srp = new Vector3(srpMa.values[0][0], srpMa.values[1][0], srpMa.values[2][0])
 
             break;
         case 39: // RIGHT Arrow
             console.log("right");
-            
+
             t = new Matrix(4, 4);
             it = new Matrix(4, 4);
             Mat4x4Translate(t, -scene.view.prp.x, -scene.view.prp.y, -scene.view.prp.z)
             Mat4x4Translate(it, scene.view.prp.x, scene.view.prp.y, scene.view.prp.z)
             r = new Matrix(4, 4);
-            Mat4x4RotateY(r, -Math.PI/100);
+            Mat4x4RotateY(r, -Math.PI / 100);
 
             srpM = new Matrix(4, 1);
             srpM.values = [
@@ -384,7 +391,7 @@ function onKeyDown(event) {
                 [scene.view.srp.z],
                 [1]
             ]
-            
+
             srpMa = Matrix.multiply([it, r, t, srpM])
             scene.view.srp = new Vector3(srpMa.values[0][0], srpMa.values[1][0], srpMa.values[2][0])
 
@@ -464,27 +471,28 @@ function drawLine(x1, y1, x2, y2) {
 }
 
 function generateModels() {
-    for(let i = 0; i < scene.models.length; i++)
-    {
+    for (let i = 0; i < scene.models.length; i++) {
         let model = scene.models[i];
-        switch(model.type) {
+        switch (model.type) {
             case 'cube':
                 scene.models[i] = generateCube(model.center, model.width, model.height, model.depth);
                 break;
             case 'cone':
                 scene.models[i] = generateCone(model.center, model.radius, model.height, model.sides);
                 break;
+            case 'cylinder':
+                scene.models[i] = generateCylinder(model.center, model.radius, model.height, model.sides);
+                break;
         }
     }
 }
 
-function generateCube(center, width, height, depth)
-{
+function generateCube(center, width, height, depth) {
     let model = {
         type: 'generic',
         vertices: [],
         edges: [],
-        matrix: new Matrix(4,4)
+        matrix: new Matrix(4, 4)
     }
 
     let w = width / 2
@@ -503,49 +511,48 @@ function generateCube(center, width, height, depth)
     ])
 
     // translate vertices around centerpoint
-    let t = new Matrix(4,4)
+    let t = new Matrix(4, 4)
     Mat4x4Translate(t, center.x, center.y, center.z)
-    for(let i = 0; i < model.vertices.length; i++) {
+    for (let i = 0; i < model.vertices.length; i++) {
         model.vertices[i] = new Vector(Matrix.multiply([t, model.vertices[i]]))
     }
 
     model.edges.push(...[
-        [0,1,2,3,0],
-        [4,5,6,7,4],
-        [0,4],
-        [1,5],
-        [2,6],
-        [3,7]
+        [0, 1, 2, 3, 0],
+        [4, 5, 6, 7, 4],
+        [0, 4],
+        [1, 5],
+        [2, 6],
+        [3, 7]
     ])
 
     return model
 }
 
-function generateCone(center, radius, height, sides)
-{
+function generateCone(center, radius, height, sides) {
     let model = {
         type: 'generic',
         vertices: [],
         edges: [],
-        matrix: new Matrix(4,4)
+        matrix: new Matrix(4, 4)
     }
 
     // vertices
     const PI2 = Math.PI * 2
-    for(let i = 0; i < sides; i += 1) {
+    for (let i = 0; i < sides; i += 1) {
         let p = PI2 * (i / sides)
         model.vertices.push(new Vector4(Math.sin(p) * radius,
-                                        -(height/2),
-                                        Math.cos(p) * radius,
-                                        1))
+            -(height / 2),
+            Math.cos(p) * radius,
+            1))
     }
-    model.vertices.push(new Vector4(0, (height/2), 0, 1))
+    model.vertices.push(new Vector4(0, (height / 2), 0, 1))
 
     // translate vertices around centerpoint
-    let t = new Matrix(4,4)
+    let t = new Matrix(4, 4)
     Mat4x4Translate(t, center.x, center.y, center.z)
     console.log(t, model.vertices)
-    for(let i = 0; i < model.vertices.length; i++) {
+    for (let i = 0; i < model.vertices.length; i++) {
         console.log(model.vertices[i])
         model.vertices[i] = new Vector(Matrix.multiply([t, model.vertices[i]]))
     }
@@ -554,9 +561,59 @@ function generateCone(center, radius, height, sides)
 
     model.edges.push([...Array(sides).keys(), 0])
 
-    for(let i = 0; i < model.vertices.length - 1; i++) {
+    for (let i = 0; i < model.vertices.length - 1; i++) {
         model.edges.push([i, model.vertices.length - 1])
     }
+
+    return model
+}
+
+function generateCylinder(center, radius, height, sides) {
+    let model = {
+        type: 'generic',
+        vertices: [],
+        edges: [],
+        matrix: new Matrix(4, 4)
+    }
+
+    // vertices
+    const PI2 = Math.PI * 2
+    for (let i = 0; i < sides; i += 1) {
+        let p = PI2 * (i / sides)
+        model.vertices.push(new Vector4(Math.sin(p) * radius,
+            -(height / 2),
+            Math.cos(p) * radius,
+            1))
+    }
+    for (let i = 0; i < sides; i += 1) {
+        let p = PI2 * (i / sides)
+        model.vertices.push(new Vector4(Math.sin(p) * radius,
+            (height / 2),
+            Math.cos(p) * radius,
+            1))
+    }
+
+    // translate vertices around centerpoint
+    let t = new Matrix(4, 4)
+    Mat4x4Translate(t, center.x, center.y, center.z)
+    console.log(t, model.vertices)
+    for (let i = 0; i < model.vertices.length; i++) {
+        console.log(model.vertices[i])
+        model.vertices[i] = new Vector(Matrix.multiply([t, model.vertices[i]]))
+    }
+
+    // edges
+    let bottom_edge = []
+    let top_edge = []
+    for (let i = 0; i < sides; i++) {
+        bottom_edge.push(i)
+        top_edge.push(sides + i)
+        model.edges.push([i, sides + i])
+    }
+    bottom_edge.push(0)
+    top_edge.push(sides)
+    model.edges.push(bottom_edge)
+    model.edges.push(top_edge)
 
     return model
 }
