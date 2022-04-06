@@ -4,6 +4,10 @@ let scene;
 let start_time;
 let keysDown = {}
 let last_time = 0;
+let recursion_counter;
+
+const MOVE_SPEED = 0.2
+const TURN_SPEED = 2
 
 const LEFT = 32; // binary 100000
 const RIGHT = 16; // binary 010000
@@ -35,7 +39,7 @@ function init() {
             prp: Vector3(44, 20, -16),
             srp: Vector3(20, 20, -40),
             vup: Vector3(0, 1, 0),
-            clip: [-19, 5, -10, 8, 12, 100]
+            clip: [-12, 12, -12, 12, 10, 150]
         },
         models: [
             {
@@ -193,6 +197,7 @@ function drawScene() {
                     v1 = Matrix.multiply([n, v1])
                     v2 = Matrix.multiply([n, v2])
                     // Clip
+                    recursion_counter = 0
                     let clippedVertices = perspectiveClipping(v1, v2);
                     if (clippedVertices != false) {
                         edges.push([clippedVertices[0], clippedVertices[1]])
@@ -231,6 +236,8 @@ function drawScene() {
 }
 
 function perspectiveClipping(v1, v2) {
+    recursion_counter++
+    if(recursion_counter > 10) return false
     // Clip in 3d
     let v1outcode = outcodePerspective(v1, scene.view.clip[4])
     let v2outcode = outcodePerspective(v2, scene.view.clip[4])
@@ -268,7 +275,7 @@ function perspectiveIntersection(v1, v2, outcode) {
         t = (v1.z - v1.x) / (dx - dz)
     }
     else if ((outcode & RIGHT) != 0) {
-        t = (v1.x + v1.z) / ((dx + dz) * -1)
+        t = (v1.x + v1.z) / ((-dx) - dz)
     }
     else if ((outcode & BOTTOM) != 0) {
         t = (v1.z - v1.y) / (dy - dz)
@@ -368,9 +375,14 @@ function clipLinePerspective(line, z_min) {
     return result;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                  Controls                                  */
+/* -------------------------------------------------------------------------- */
+
 // Called when user presses a key on the keyboard down 
 function onKeyDown(event) {
     let t, it, r, srpM, srpMa
+    let v;
     switch (event.keyCode) {
         case 37: // LEFT Arrow
             console.log("left");
@@ -380,7 +392,7 @@ function onKeyDown(event) {
             Mat4x4Translate(t, -scene.view.prp.x, -scene.view.prp.y, -scene.view.prp.z)
             Mat4x4Translate(it, scene.view.prp.x, scene.view.prp.y, scene.view.prp.z)
             r = new Matrix(4, 4);
-            Mat4x4RotateY(r, Math.PI / 100);
+            Mat4x4RotateY(r, Math.PI * (1 / TURN_SPEED));
 
             srpM = new Matrix(4, 1);
             srpM.values = [
@@ -402,7 +414,7 @@ function onKeyDown(event) {
             Mat4x4Translate(t, -scene.view.prp.x, -scene.view.prp.y, -scene.view.prp.z)
             Mat4x4Translate(it, scene.view.prp.x, scene.view.prp.y, scene.view.prp.z)
             r = new Matrix(4, 4);
-            Mat4x4RotateY(r, -Math.PI / 100);
+            Mat4x4RotateY(r, -Math.PI * (1 / TURN_SPEED));
 
             srpM = new Matrix(4, 1);
             srpM.values = [
@@ -418,23 +430,31 @@ function onKeyDown(event) {
             break;
         case 65: // A key
             console.log("A");
-            scene.view.prp = scene.view.prp.subtract(scene.u)
-            scene.view.srp = scene.view.srp.subtract(scene.u)
+            v = new Vector3(scene.u.x, scene.u.y, scene.u.z)
+            v.scale(MOVE_SPEED)
+            scene.view.prp = scene.view.prp.subtract(v)
+            scene.view.srp = scene.view.srp.subtract(v)
             break;
         case 68: // D key
             console.log("D");
-            scene.view.prp = scene.view.prp.add(scene.u)
-            scene.view.srp = scene.view.srp.add(scene.u)
+            v = new Vector3(scene.u.x, scene.u.y, scene.u.z)
+            v.scale(MOVE_SPEED)
+            scene.view.prp = scene.view.prp.add(v)
+            scene.view.srp = scene.view.srp.add(v)
             break;
         case 83: // S key
             console.log("S");
-            scene.view.prp = scene.view.prp.add(scene.n)
-            scene.view.srp = scene.view.srp.add(scene.n)
+            v = new Vector3(scene.n.x, scene.n.y, scene.n.z)
+            v.scale(MOVE_SPEED)
+            scene.view.prp = scene.view.prp.add(v)
+            scene.view.srp = scene.view.srp.add(v)
             break;
         case 87: // W key
             console.log("W");
-            scene.view.prp = scene.view.prp.subtract(scene.n)
-            scene.view.srp = scene.view.srp.subtract(scene.n)
+            v = new Vector3(scene.n.x, scene.n.y, scene.n.z)
+            v.scale(MOVE_SPEED)
+            scene.view.prp = scene.view.prp.subtract(v)
+            scene.view.srp = scene.view.srp.subtract(v)
             break;
     }
 }
@@ -489,6 +509,10 @@ function drawLine(x1, y1, x2, y2) {
     ctx.fillRect(x1 - 2, y1 - 2, 4, 4);
     ctx.fillRect(x2 - 2, y2 - 2, 4, 4);
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                Model Parsing                               */
+/* -------------------------------------------------------------------------- */
 
 function generateModels() {
     for (let i = 0; i < scene.models.length; i++) {
