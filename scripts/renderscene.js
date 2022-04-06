@@ -82,6 +82,13 @@ function init() {
                 radius: 10,
                 height: 30,
                 sides: 10
+            },
+            {
+                type: 'sphere',
+                center: Vector3(0, 0, -25),
+                radius: 10,
+                slices: 12,
+                stacks: 12
             }
         ]
     };
@@ -483,6 +490,8 @@ function generateModels() {
             case 'cylinder':
                 scene.models[i] = generateCylinder(model.center, model.radius, model.height, model.sides);
                 break;
+            case 'sphere':
+                scene.models[i] = generateSphere(model.center, model.radius, model.slices, model.stacks)
         }
     }
 }
@@ -614,6 +623,77 @@ function generateCylinder(center, radius, height, sides) {
     top_edge.push(sides)
     model.edges.push(bottom_edge)
     model.edges.push(top_edge)
+
+    return model
+}
+
+function generateSphere(center, radius, slices, stacks) {
+    let model = {
+        type: 'generic',
+        vertices: [],
+        edges: [],
+        matrix: new Matrix(4, 4)
+    }
+
+    // vertices
+    const PI2 = Math.PI * 2
+    for (let stack_i = 1; stack_i < (stacks + 1); stack_i++) {
+        let phi = Math.PI * (stack_i / (stacks + 1))
+        let height = Math.cos(phi);
+        let radius = Math.sin(phi);
+        for (let i = 0; i < slices; i += 1) {
+            let p = PI2 * (i / slices)
+            model.vertices.push(new Vector4(
+                Math.sin(p) * radius,
+                height,
+                Math.cos(p) * radius,
+                1))
+        }
+    }
+
+    // add top and bottom vertices
+    model.vertices.push(new Vector4(0, 1, 0, 1))
+    model.vertices.push(new Vector4(0, -1, 0, 1))
+
+    let s = new Matrix(4, 4)
+    Mat4x4Scale(s, radius, radius, radius);
+    for (let i = 0; i < model.vertices.length; i++) {
+        model.vertices[i] = new Vector(Matrix.multiply([s, model.vertices[i]]))
+    }
+
+
+    // translate vertices around centerpoint
+    let t = new Matrix(4, 4)
+    Mat4x4Translate(t, center.x, center.y, center.z)
+    for (let i = 0; i < model.vertices.length; i++) {
+        model.vertices[i] = new Vector(Matrix.multiply([t, model.vertices[i]]))
+    }
+
+    // edges
+    // handle slices and stacks first
+    for(let i = 0; i < stacks; i++) {
+        let edge = []
+        for(let j = 0; j < slices; j++) {
+            edge.push(i * stacks + j)
+        }
+        edge.push(i * stacks)
+        model.edges.push(edge)
+    }
+
+    for(let i = 0; i < stacks - 1; i++) {
+        for(let j = 0; j < slices; j++) {
+            model.edges.push([(i * stacks) + j, (i * stacks) + j + stacks])
+        }
+    }
+
+    // attach top and bottom vertices
+    let top_vertex = model.vertices.length - 2;
+    let bottom_vertex = model.vertices.length - 1;
+
+    for(let i = 0; i < slices; i++) {
+        model.edges.push([i, top_vertex])
+        model.edges.push([(slices * stacks) - slices + i, bottom_vertex])
+    }
 
     return model
 }
