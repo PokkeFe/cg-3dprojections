@@ -7,7 +7,7 @@ let last_time = 0;
 let recursion_counter;
 
 const MOVE_SPEED = 0.2
-const TURN_SPEED = 2
+const TURN_SPEED = 0.01
 
 const LEFT = 32; // binary 100000
 const RIGHT = 16; // binary 010000
@@ -392,7 +392,7 @@ function onKeyDown(event) {
             Mat4x4Translate(t, -scene.view.prp.x, -scene.view.prp.y, -scene.view.prp.z)
             Mat4x4Translate(it, scene.view.prp.x, scene.view.prp.y, scene.view.prp.z)
             r = new Matrix(4, 4);
-            Mat4x4RotateY(r, Math.PI * (1 / TURN_SPEED));
+            Mat4x4RotateY(r, Math.PI * TURN_SPEED);
 
             srpM = new Matrix(4, 1);
             srpM.values = [
@@ -414,7 +414,7 @@ function onKeyDown(event) {
             Mat4x4Translate(t, -scene.view.prp.x, -scene.view.prp.y, -scene.view.prp.z)
             Mat4x4Translate(it, scene.view.prp.x, scene.view.prp.y, scene.view.prp.z)
             r = new Matrix(4, 4);
-            Mat4x4RotateY(r, -Math.PI * (1 / TURN_SPEED));
+            Mat4x4RotateY(r, -Math.PI * TURN_SPEED);
 
             srpM = new Matrix(4, 1);
             srpM.values = [
