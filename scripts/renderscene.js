@@ -108,7 +108,46 @@ function init() {
                 }
             }
         ]
-    };
+    }
+    let debugScene = {
+        view: {
+            type: 'parallel',
+            prp: Vector3(44, 20, -16),
+            srp: Vector3(20, 20, -40),
+            vup: Vector3(0, 1, 0),
+            clip: [-1, 1, -1, 1, 0, -1]
+        },
+        models: [
+            {
+                type: 'generic',
+                vertices: [
+                    Vector4(0, 0, -30, 1),
+                    Vector4(20, 0, -30, 1),
+                    Vector4(20, 12, -30, 1),
+                    Vector4(10, 20, -30, 1),
+                    Vector4(0, 12, -30, 1),
+                    Vector4(0, 0, -60, 1),
+                    Vector4(20, 0, -60, 1),
+                    Vector4(20, 12, -60, 1),
+                    Vector4(10, 20, -60, 1),
+                    Vector4(0, 12, -60, 1)
+                ],
+                edges: [
+                    [0, 1, 2, 3, 4, 0],
+                    [5, 6, 7, 8, 9, 5],
+                    [0, 5],
+                    [1, 6],
+                    [2, 7],
+                    [3, 8],
+                    [4, 9]
+                ],
+                matrix: new Matrix(4, 4)
+            }
+        ]
+
+    }
+    
+    //scene = debugScene
 
     // generate models
     generateModels()
@@ -152,6 +191,7 @@ function animate(timestamp) {
 
 // Main drawing code - use information contained in variable `scene`
 function drawScene() {
+    console.log(scene);
     //redraw background every frame
     ctx.fillStyle = 'white'
     ctx.fillRect(0, 0, view.width, view.height)
@@ -182,8 +222,14 @@ function drawScene() {
     //  * draw line
 
     // TODO: Allow for parallel perspective
-    let n = mat4x4Perspective(scene.view.prp, scene.view.srp, scene.view.vup, scene.view.clip)
-    let m = mat4x4MPer()
+    let m, n;
+    if(scene.view.type == 'perspective') {
+        n = mat4x4Perspective(scene.view.prp, scene.view.srp, scene.view.vup, scene.view.clip)
+        m = mat4x4MPer()
+    } else {
+        n = mat4x4Parallel(scene.view.prp, scene.view.srp, scene.view.vup, scene.view.clip)
+        m = mat4x4MPar()
+    }
 
     for (let model of scene.models) {
         if (model.type === 'generic') {
@@ -198,7 +244,12 @@ function drawScene() {
                     v2 = Matrix.multiply([n, v2])
                     // Clip
                     recursion_counter = 0
-                    let clippedVertices = perspectiveClipping(v1, v2);
+                    let clippedVertices;
+                    if(scene.view.type == 'perspective') {
+                        clippedVertices = perspectiveClipping(v1, v2);
+                    } else {
+                        clippedVertices = parallelClipping(v1, v2)
+                    }
                     if (clippedVertices != false) {
                         edges.push([clippedVertices[0], clippedVertices[1]])
                     }
