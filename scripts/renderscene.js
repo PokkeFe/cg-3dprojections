@@ -108,7 +108,46 @@ function init() {
                 }
             }
         ]
-    };
+    }
+    let debugScene = {
+        view: {
+            type: 'parallel',
+            prp: Vector3(44, 20, -16),
+            srp: Vector3(20, 20, -40),
+            vup: Vector3(0, 1, 0),
+            clip: [-1, 1, -1, 1, 0, -1]
+        },
+        models: [
+            {
+                type: 'generic',
+                vertices: [
+                    Vector4(0, 0, -30, 1),
+                    Vector4(20, 0, -30, 1),
+                    Vector4(20, 12, -30, 1),
+                    Vector4(10, 20, -30, 1),
+                    Vector4(0, 12, -30, 1),
+                    Vector4(0, 0, -60, 1),
+                    Vector4(20, 0, -60, 1),
+                    Vector4(20, 12, -60, 1),
+                    Vector4(10, 20, -60, 1),
+                    Vector4(0, 12, -60, 1)
+                ],
+                edges: [
+                    [0, 1, 2, 3, 4, 0],
+                    [5, 6, 7, 8, 9, 5],
+                    [0, 5],
+                    [1, 6],
+                    [2, 7],
+                    [3, 8],
+                    [4, 9]
+                ],
+                matrix: new Matrix(4, 4)
+            }
+        ]
+
+    }
+    
+    //scene = debugScene
 
     // generate models
     generateModels()
@@ -152,7 +191,8 @@ function animate(timestamp) {
 
 // Main drawing code - use information contained in variable `scene`
 function drawScene() {
-
+    console.log(scene);
+    //redraw background every frame
     ctx.fillStyle = 'white'
     ctx.fillRect(0, 0, view.width, view.height)
 
@@ -182,8 +222,14 @@ function drawScene() {
     //  * draw line
 
     // TODO: Allow for parallel perspective
-    let n = mat4x4Perspective(scene.view.prp, scene.view.srp, scene.view.vup, scene.view.clip)
-    let m = mat4x4MPer()
+    let m, n;
+    if(scene.view.type == 'perspective') {
+        n = mat4x4Perspective(scene.view.prp, scene.view.srp, scene.view.vup, scene.view.clip)
+        m = mat4x4MPer()
+    } else {
+        n = mat4x4Parallel(scene.view.prp, scene.view.srp, scene.view.vup, scene.view.clip)
+        m = mat4x4MPar()
+    }
 
     for (let model of scene.models) {
         if (model.type === 'generic') {
@@ -198,7 +244,12 @@ function drawScene() {
                     v2 = Matrix.multiply([n, v2])
                     // Clip
                     recursion_counter = 0
-                    let clippedVertices = perspectiveClipping(v1, v2);
+                    let clippedVertices;
+                    if(scene.view.type == 'perspective') {
+                        clippedVertices = perspectiveClipping(v1, v2);
+                    } else {
+                        clippedVertices = parallelClipping(v1, v2)
+                    }
                     if (clippedVertices != false) {
                         edges.push([clippedVertices[0], clippedVertices[1]])
                     }
@@ -235,6 +286,78 @@ function drawScene() {
     }
 }
 
+function parallelClipping(v1, v2) {
+    recursion_counter++;
+    if(recursion_counter>10) return false;
+
+    let v1outcode = outcodeParallel(v1);
+    let v2outcode = outcodeParallel(v2);
+
+    //trivial accept
+    if((v1outcode | v2outcode) == 0) {
+        return [v1, v2]
+    }
+    //trivial reject
+    else if((v1outcode & v2outcode) != 0) {
+        return false
+    }
+    //investigate further
+    else {
+        if(v1outcode != 0) {
+            let new_v1 = parallelIntersection(v1, v2, v1outcode)
+            return parallelClipping(new_v1, v2)
+        } else if (v2outcode != 0) {
+            let new_v2 = parallelIntersection(v1, v2, v2outcode)
+            return parallelClipping(v1, new_v2);
+        }
+        throw new Error("Both vertices inbounds but not trivially accepted")
+    }
+}
+
+function parallelIntersection(v1, v2, outcode) {
+    let t
+    let dx = v2.x - v1.x
+    let dy = v2.y - v1.y
+    let dz = v2.z - v1.z
+
+
+    if ((outcode & LEFT) != 0) {
+        //clip against left edge, x = -1
+        t = ((-1) - v1.x)/((-v1.x) + v2.x)
+    }
+    else if ((outcode & RIGHT) != 0) {
+        //clip against right edge,  x= 1
+        t = ((1) - v1.x)/((-v1.x) + v2.x)
+    }
+    else if ((outcode & BOTTOM) != 0) {
+        //clip against bototm edge, y = -1
+        t = ((-1) - v1.y)/((-v1.y) + v2.y)
+    }
+    else if ((outcode & TOP) != 0) {
+        //clip against top edge, y = 1
+        t = ((1) - v1.y)/((-v1.y) + v2.y)
+    }
+    else if ((outcode & NEAR) != 0) {
+        //clip against near edge, z = 0
+        t = ((0) - v1.z)/((-v1.z) + v2.z)
+    }
+    else if ((outcode & FAR) != 0) {
+        //clip against far edge, z = -1
+        t = ((-1) - v1.z)/((-v1.z) + v2.z)
+    }
+    if (t == undefined) {
+        throw new Error("T undefined")
+    } else {
+        //return new vector for clipped vertex
+        return new Vector4(
+            (1 - t) * v1.x + t * v2.x,
+            (1 - t) * v1.y + t * v2.y,
+            (1 - t) * v1.z + t * v2.z,
+            v1.w
+        )
+    }
+}
+
 function perspectiveClipping(v1, v2) {
     recursion_counter++
     if(recursion_counter > 10) return false
@@ -242,23 +365,27 @@ function perspectiveClipping(v1, v2) {
     let v1outcode = outcodePerspective(v1, scene.view.clip[4])
     let v2outcode = outcodePerspective(v2, scene.view.clip[4])
 
-    // Trivial accept
+    // Trivial accept: both endpoints are within the view
     if ((v1outcode | v2outcode) == 0) {
         return [v1, v2]
     }
-    // Trivial reject
+    // Trivial reject: both endpoints are outside the same edge
     else if ((v1outcode & v2outcode) != 0) {
         return false
     }
     // Investigate further
     else {
-
+        //select and endpoint outside the view rectangle
         if (v1outcode != 0) {
+            //v1 is clipped against the view volume
             let new_v1 = perspectiveIntersection(v1, v2, v1outcode)
+            //recursively repeat until trivially accepted or rejected.
             return perspectiveClipping(new_v1, v2)
 
         } else if (v2outcode != 0) {
+            //v2 is clipped against the view volume
             let new_v2 = perspectiveIntersection(v1, v2, v2outcode)
+            //recursively repeat until trivially accepted or rejected.
             return perspectiveClipping(v1, new_v2)
         }
         throw new Error("Both vertices inbounds but not trivally accepted")
@@ -271,6 +398,7 @@ function perspectiveIntersection(v1, v2, outcode) {
     let dy = v2.y - v1.y
     let dz = v2.z - v1.z
     // Clip first vertex
+    // find 1st bit set to 1 in outcode, find t value from parametric equations
     if ((outcode & LEFT) != 0) {
         t = (v1.z - v1.x) / (dx - dz)
     }
@@ -292,6 +420,7 @@ function perspectiveIntersection(v1, v2, outcode) {
     if (t == undefined) {
         throw new Error("t undefined")
     } else {
+        //return new vector for clipped vertex
         return new Vector4(
             (1 - t) * v1.x + t * v2.x,
             (1 - t) * v1.y + t * v2.y,
@@ -768,10 +897,14 @@ function animateModels(delta_time) {
             // 2 translation and 1 rotation matrix
             let t1 = new Matrix(4, 4);
             let t2 = new Matrix(4, 4);
+            //translation 1 to the origin
             Mat4x4Translate(t1, -model.center.x, -model.center.y, -model.center.z);
+            //translation 2 back to position
             Mat4x4Translate(t2, model.center.x, model.center.y, model.center.z);
             let r = new Matrix(4,4);
+            //angle is function of rotation speed over time
             let theta = (Math.PI * 2 * model.animation.rps) / (1000 / delta_time)
+            //switch for axis of rotation
             switch(model.animation.axis) {
                 case 'x':
                     Mat4x4RotateX(r, theta)
@@ -786,6 +919,7 @@ function animateModels(delta_time) {
                     throw new Error("No proper axis provided")
             }
             for(let j = 0; j < model.vertices.length; j++) {
+                //for each vertex: translate to the origin, rotate by theta, translate back to original position.
                 scene.models[i].vertices[j] = Matrix.multiply([t2, r, t1, model.vertices[j]])
             }
         }

@@ -27,7 +27,7 @@ function mat4x4Parallel(prp, srp, vup, clip) {
     let cw = new Vector(3);
     cw.x = (clip[0] + clip[1]) / 2;
     cw.y = (clip[2] + clip[3]) / 2;
-    cw.z = cw.z = -clip[4];
+    cw.z = -clip[4];
 
     //DOP: CW-PRP
     let dop = new Vector(3);
